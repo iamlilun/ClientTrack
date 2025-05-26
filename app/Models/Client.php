@@ -14,6 +14,15 @@ class Client extends Model
     ];
 
     /**
+     * 自訂格式化輸出日期
+     * @return string
+     */
+    protected function serializeDate(\DateTimeInterface $date): string
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
+
+    /**
      * HasMany relationship with Contact model.
      */
     public function contacts()
