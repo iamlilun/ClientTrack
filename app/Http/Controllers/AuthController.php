@@ -3,37 +3,28 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+
+use App\Services\AuthService;
 
 class AuthController extends Controller
 {
+    public function __construct(protected AuthService $authService) {}
+
     /**
      * 註冊新用戶
      */
     public function register(Request $request)
     {
         // Validate the request data
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+        $data = $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users',
+            'password' => 'required|string|min:6|confirmed',
         ]);
 
-        // Create the user
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),
-        ]);
+        $result = $this->authService->register($data);
 
-        $token = $user->createToken('api-token')->plainTextToken;
-
-        return response()->json([
-            'user'  => $user,
-            'token' => $token,
-        ], 201);
+        return response()->json($result, 201);
     }
 
     /**
@@ -42,25 +33,14 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         // Validate the request data
-        $request->validate([
-            'email' => 'required|string|email',
-            'password' => 'required',
+        $data = $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $result = $this->authService->login($data);
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['帳號或密碼錯誤'],
-            ]);
-        }
-
-        $token = $user->createToken('api-token')->plainTextToken;
-
-        return response()->json([
-            'user'  => $user,
-            'token' => $token,
-        ]);
+        return response()->json($result);
     }
 
 
@@ -69,7 +49,7 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $this->authService->logout($request->user());
 
         return response()->json(['message' => '成功登出']);
     }

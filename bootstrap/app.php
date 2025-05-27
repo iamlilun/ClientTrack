@@ -15,5 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (Illuminate\Validation\ValidationException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => '驗證失敗',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+        });
     })->create();
