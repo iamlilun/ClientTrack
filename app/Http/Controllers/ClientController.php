@@ -5,15 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\ClientService;
 
 class ClientController extends Controller
 {
+    public function __construct(protected ClientService $service) {}
+
     /**
      * 取得目前使用者的所有客戶
      */
     public function index()
     {
-        $clients = Auth::user()->clients()->latest()->get();
+        $clients = $this->service->list(Auth::user());
         return response()->json($clients);
     }
 
@@ -23,24 +26,23 @@ class ClientController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $data = $request->validate([
             'name'  => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
             'notes' => 'nullable|string',
         ]);
 
-        $client = Auth::user()->clients()->create($validated);
-
+        $client = $this->service->create(Auth::user(), $data);
         return response()->json($client, 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Client $client)
+    public function show(int $id)
     {
-        $this->authorizeClient($client);
+        $client = $this->service->show(Auth::user(), $id);
         return response()->json($client);
     }
 
@@ -48,41 +50,25 @@ class ClientController extends Controller
     /**
      * 更新客戶資料
      */
-    public function update(Request $request, Client $client)
+    public function update(Request $request, int $id)
     {
-        $this->authorizeClient($client);
-
-        $validated = $request->validate([
+        $data = $request->validate([
             'name'  => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
             'notes' => 'nullable|string',
         ]);
 
-        $client->update($validated);
-
+        $client = $this->service->update(Auth::user(), $id, $data);
         return response()->json($client);
     }
 
     /**
      * 刪除一筆客戶資料
      */
-    public function destroy(Client $client)
+    public function destroy(int $id)
     {
-        $this->authorizeClient($client);
-
-        $client->delete();
-
+        $this->service->delete(Auth::user(), $id);
         return response()->json(['message' => '客戶已刪除']);
-    }
-
-    /**
-     * 檢查是否為該使用者的客戶
-     */
-    protected function authorizeClient(Client $client)
-    {
-        if ($client->user_id !== Auth::id()) {
-            abort(403, '你沒有權限操作這筆資料');
-        }
     }
 }
